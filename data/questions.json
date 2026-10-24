@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "1.0",
+  "title": "智学消防题库",
+  "lastUpdated": "2026-10-24",
+  "answerPolicy": "answerStatus=verified 表示已核验；pending_review 仅供整理和复核，不能视为正式标准答案。",
+  "questions": [],
+  "videos": []
+}

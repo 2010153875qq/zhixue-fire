@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "1.0",
+  "questions": [
+    {
+      "id": "fire-0001",
+      "type": "single",
+      "category": "消防设施操作员",
+      "chapter": "待填写",
+      "question": "在核验真实题目后填写",
+      "options": ["A. 选项一", "B. 选项二"],
+      "answer": "",
+      "answerStatus": "pending_review",
+      "explanation": "",
+      "source": "填写来源或题库批次",
+      "reviewNote": "未核验，禁止当作正式标准答案"
+    }
+  ],
+  "videos": [
+    {
+      "id": "video-0001",
+      "title": "待填写",
+      "path": "videos/example.mp4",
+      "status": "not_uploaded"
+    }
+  ]
+}

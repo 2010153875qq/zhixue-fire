@@ -11,7 +11,7 @@
 <body>
 <div class="wrap">
 <header class="hero"><h1>智学消防</h1><p>消防设施操作员（中级监控）学习站<br>题库、错题记录和课程入口</p></header>
-<div class="notice">当前线上题库尚未导入真实题目（0 题）。待复核内容只能用于整理，不能视为正式标准答案。</div>
+<div class="notice" id="bankNotice" role="status">正在读取题库。待复核内容不能作为正式标准答案。</div>
 <section class="stats" aria-label="题库统计"><div class="stat"><b id="allCount">0</b><span>全部</span></div><div class="stat"><b id="singleCount">0</b><span>单选</span></div><div class="stat"><b id="multipleCount">0</b><span>多选</span></div><div class="stat"><b id="judgeCount">0</b><span>判断</span></div></section>
 <nav class="tabs" aria-label="题型导航"><button class="active" data-filter="all">全部</button><button data-filter="single">单选题</button><button data-filter="multiple">多选题</button><button data-filter="judge">判断题</button><button data-filter="wrong">错题记录</button><button data-filter="videos">视频入口</button></nav>
 <main id="content"></main>
@@ -22,13 +22,47 @@ const wrongKey='zhixue-fire-wrong';let db={questions:[],videos:[]};let current='
 const labels={single:'单选题',multiple:'多选题',judge:'判断题'};
 function saveWrong(){localStorage.setItem(wrongKey,JSON.stringify([...wrong]))}
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-function answerText(q){return Array.isArray(q.answer)?q.answer.join('、'):String(q.answer??'')}
-function renderStats(){for(const [id,n] of [['allCount',db.questions.length],['singleCount',db.questions.filter(q=>q.type==='single').length],['multipleCount',db.questions.filter(q=>q.type==='multiple').length],['judgeCount',db.questions.filter(q=>q.type==='judge').length]])document.getElementById(id).textContent=n}
+// Only explicitly verified questions with a usable answer can be graded.
+// This validates the data format, not whether a source answer is factually correct.
+function validatedAnswer(q){
+  if(!q||q.answerStatus!=='verified'||!['single','multiple','judge'].includes(q.type))return null;
+  if(!Array.isArray(q.options)||q.options.length<2||q.options.length>26||q.options.some(o=>typeof o!=='string'||!o.trim()))return null;
+  if(q.type==='judge'&&q.options.length!==2)return null;
+  const raw=Array.isArray(q.answer)?q.answer:[q.answer];
+  if(raw.some(a=>typeof a!=='string'))return null;
+  const answer=raw.map(a=>a.trim().toUpperCase());
+  if(!answer.length||new Set(answer).size!==answer.length)return null;
+  if(q.type==='multiple'?answer.length<2:answer.length!==1)return null;
+  if(answer.some(a=>!/^[A-Z]$/.test(a)||a.charCodeAt(0)-65>=q.options.length))return null;
+  return answer.sort();
+}
+function renderStats(){
+  for(const [id,n] of [['allCount',db.questions.length],['singleCount',db.questions.filter(q=>q.type==='single').length],['multipleCount',db.questions.filter(q=>q.type==='multiple').length],['judgeCount',db.questions.filter(q=>q.type==='judge').length]])document.getElementById(id).textContent=n;
+  const total=db.questions.length;
+  const gradable=db.questions.filter(q=>validatedAnswer(q)!==null).length;
+  document.getElementById('bankNotice').textContent=total
+    ? `已读取 ${total} 题；${gradable} 题具备判分条件，${total-gradable} 题待复核或数据有误。未核验题目不会自动判分。`
+    : '当前题库没有题目。导入真实题目后可练习；待复核内容不会自动判分。';
+}
 function render(){if(current==='videos')return renderVideos();let qs=current==='wrong'?db.questions.filter(q=>wrong.has(q.id)):current==='all'?db.questions:db.questions.filter(q=>q.type===current);const root=document.getElementById('content');if(!qs.length){root.innerHTML='<section class="panel empty"><strong>'+ (current==='wrong'?'暂无错题记录':'暂无可显示题目')+'</strong><p class="small">题库数据为空或当前分类还没有题目。导入后刷新页面即可读取。</p></section>';return}root.innerHTML=qs.map(q=>card(q)).join('');root.querySelectorAll('.question').forEach(el=>{el.querySelector('.submit').onclick=()=>check(el,db.questions.find(q=>q.id===el.dataset.id));el.querySelector('.mark').onclick=()=>{wrong.add(el.dataset.id);saveWrong();el.querySelector('.mark').textContent='已加入错题';}})}
-function card(q){const opts=(q.options||[]).map((o,i)=>`<label class="option"><input type="${q.type==='multiple'?'checkbox':'radio'}" name="q-${esc(q.id)}" value="${esc(String.fromCharCode(65+i))}"><span>${esc(o)}</span></label>`).join('');const state=q.answerStatus==='pending_review'?'待复核':'已核验';return `<article class="question" data-id="${esc(q.id)}"><div class="meta">${esc(labels[q.type]||q.type||'未分类')} · ${esc(q.category||'消防学习')} · 状态：${state}</div><p class="qtext">${esc(q.question||'未填写题干')}</p><div class="options">${opts||'<span class="small">暂无选项</span>'}</div><div class="row" style="margin-top:12px"><button class="primary submit">提交答案</button><button class="ghost mark">加入错题</button></div><div class="result" hidden></div></article>`}
-function check(el,q){const picked=[...el.querySelectorAll('input:checked')].map(x=>x.value).sort();const correct=(Array.isArray(q.answer)?q.answer.map(String).sort():[String(q.answer||'').trim()]).sort();const box=el.querySelector('.result');box.hidden=false;if(q.answerStatus==='pending_review'){box.className='result pending';box.innerHTML='本题答案状态为“待复核”，不能据此判定对错。'+(q.reviewNote?'<br>'+esc(q.reviewNote):'');wrong.add(q.id);saveWrong();return}const ok=JSON.stringify(picked)===JSON.stringify(correct);box.className='result '+(ok?'ok':'bad');box.innerHTML=(ok?'回答正确。':'回答不正确。')+' 正式答案：'+esc(answerText(q))+(q.explanation?'<br>解析：'+esc(q.explanation):'');if(!ok){wrong.add(q.id);saveWrong()}}
+function card(q){const opts=(Array.isArray(q.options)?q.options:[]).map((o,i)=>`<label class="option"><input type="${q.type==='multiple'?'checkbox':'radio'}" name="q-${esc(q.id)}" value="${esc(String.fromCharCode(65+i))}"><span>${esc(o)}</span></label>`).join('');const state=validatedAnswer(q)!==null?'已标记核验':'待复核';return `<article class="question" data-id="${esc(q.id)}"><div class="meta">${esc(labels[q.type]||q.type||'未分类')} · ${esc(q.category||'消防学习')} · 状态：${state}</div><p class="qtext">${esc(q.question||'未填写题干')}</p><div class="options">${opts||'<span class="small">暂无选项</span>'}</div><div class="row" style="margin-top:12px"><button class="primary submit">提交答案</button><button class="ghost mark">加入错题</button></div><div class="result" hidden></div></article>`}
+function check(el,q){
+  const picked=[...el.querySelectorAll('input:checked')].map(x=>x.value).sort();
+  const correct=validatedAnswer(q);
+  const box=el.querySelector('.result');box.hidden=false;
+  if(correct===null){
+    box.className='result pending';
+    box.innerHTML='本题待复核或答案格式有误，暂不判定对错。'+(q&&q.reviewNote?'<br>'+esc(q.reviewNote):'');
+    return;
+  }
+  if(!picked.length){box.className='result pending';box.textContent='请先选择答案，再提交。';return}
+  const ok=JSON.stringify(picked)===JSON.stringify(correct);
+  box.className='result '+(ok?'ok':'bad');
+  box.innerHTML=(ok?'回答正确。':'回答不正确。')+' 标记的答案：'+esc(correct.join('、'))+(q.explanation?'<br>解析：'+esc(q.explanation):'');
+  if(!ok){wrong.add(q.id);saveWrong()}
+}
 function renderVideos(){const root=document.getElementById('content');const vs=db.videos||[];if(!vs.length){root.innerHTML='<section class="panel empty"><strong>暂无视频课程</strong><p class="small">videos/ 目录当前没有 MP4。上传后在 data/questions.json 的 videos 数组填写路径。</p></section>';return}root.innerHTML=vs.map(v=>`<article class="video"><strong>${esc(v.title||'未命名视频')}</strong><span class="small">${v.status==='not_uploaded'?'尚未上传视频文件':'课程入口'}</span>${v.status==='not_uploaded'?'':'<a href="'+esc(v.path||'#')+'">打开视频</a>'}</article>`).join('')}
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));b.classList.add('active');current=b.dataset.filter;render()});
-fetch('data/questions.json',{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject()).then(x=>{db=x||{};db.questions=Array.isArray(db.questions)?db.questions:[];db.videos=Array.isArray(db.videos)?db.videos:[];renderStats();render()}).catch(()=>{document.getElementById('content').innerHTML='<section class="panel empty"><strong>题库文件加载失败</strong><p class="small">请确认 GitHub Pages 已发布 main 分支根目录，且 data/questions.json 路径存在。</p></section>'});
+fetch('data/questions.json',{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject()).then(x=>{db=x||{};db.questions=Array.isArray(db.questions)?db.questions:[];db.videos=Array.isArray(db.videos)?db.videos:[];renderStats();render()}).catch(()=>{document.getElementById('bankNotice').textContent='题库加载失败，暂时无法确认题目数量。';for(const id of ['allCount','singleCount','multipleCount','judgeCount'])document.getElementById(id).textContent='—';document.getElementById('content').innerHTML='<section class="panel empty"><strong>题库文件加载失败</strong><p class="small">请确认 GitHub Pages 已发布 main 分支根目录，且 data/questions.json 路径存在。</p></section>'});
 </script>
 </body></html>

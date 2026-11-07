@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1.1",
+  "title": "消防中级监控题库",
+  "lastUpdated": "填写日期",
+  "answerPolicy": "verified 为已核验；recorded 为录屏参考、待独立复核；pending_review 不计分。",
+  "questions": [
+    {
+      "id": "fire-0001",
+      "type": "single",
+      "chapter": "填写章节",
+      "question": "替换为真实题干",
+      "options": ["A. 填写选项", "B. 填写选项"],
+      "answer": null,
+      "answerStatus": "pending_review",
+      "recordedAnswer": null,
+      "explanation": "",
+      "source": "填写真实来源",
+      "answerEvidence": "",
+      "reviewNote": "答案和解析未核实"
+    }
+  ],
+  "videos": []
+}

@@ -1,0 +1,9 @@
+{
+  "source_site": "fire-exam-practice-studio",
+  "source_commit": "36cf97a5e65c1f1f62699fa906a86c3259705314",
+  "source_version": 21,
+  "purpose": "GitHub Pages mirror; records are stored in each browser",
+  "excluded_unused_files": [
+    "questions.js"
+  ]
+}
